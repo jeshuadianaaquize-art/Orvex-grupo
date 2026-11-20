@@ -1,0 +1,62 @@
+server:
+  port: ${SERVER_PORT:8101}
+
+spring:
+  application:
+    name: usuarios
+  datasource:
+    # Cada servicio tiene su propio esquema y usuario de BD (arquitectura del informe, punto 5.3.1.12).
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PUERTO:3306}/orvex_usuarios?useUnicode=true&characterEncoding=utf8
+    username: ${DB_USER:orvex_usuarios}
+    password: ${DB_PASSWORD:orvex_dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none        # el esquema lo controla Flyway, no Hibernate
+  flyway:
+    enabled: true
+  # Correo saliente (bienvenida y recuperación). En desarrollo va a Mailpit: http://localhost:8025
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.connectiontimeout: 3000
+      mail.smtp.timeout: 5000
+
+management:
+  metrics:
+    tags:
+      servicio: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false   # si el correo falla, el servicio sigue sano (modo degradado, RNF-03)
+
+info:
+  servicio: usuarios
+  descripcion: "Usuarios y acceso: registro, sesión JWT, perfil, direcciones y roles (M02)."
+
+orvex:
+  jwt:
+    secreto: ${JWT_SECRET:solo-desarrollo-cambiar-este-secreto-en-produccion}
+    duracion-sesion: ${JWT_DURACION:60m}
+    duracion-recuperacion: 30m
+  web-url: ${WEB_URL:http://localhost:3000}
+  correo:
+    remitente: ${CORREO_REMITENTE:Orvex <no-responder@orvex.local>}
+  login:
+    intentos-maximos: 5
+    bloqueo: 15m
+  # Cuentas de demostración (una por rol). Solo se crean si se habilita explícitamente.
+  demo:
+    habilitado: ${ORVEX_DEMO:false}
+    contrasena: ${ORVEX_DEMO_CONTRASENA:Orvex2026!}
