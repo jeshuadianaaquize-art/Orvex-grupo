@@ -1,0 +1,420 @@
+/* Tablero, investigación operativa (Markov) y caja (POS). Usa los tokens de globals.css. */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--s-3);
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-4);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-lg);
+  background: var(--c-superficie);
+  min-width: 0;
+}
+.kpi > span {
+  color: var(--c-texto-2);
+  font-size: var(--t-sm);
+}
+.kpi > strong {
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi > small {
+  color: var(--c-texto-2);
+  font-size: var(--t-xs);
+}
+.texto-error {
+  color: var(--c-error);
+}
+.titulo-seccion {
+  font-size: var(--t-lg);
+}
+.barra-io {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s-3);
+  align-items: end;
+}
+.barra-io label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  font-size: var(--t-sm);
+  color: var(--c-texto-2);
+  min-width: 0;
+}
+.barra-io .ancho-2 {
+  grid-column: span 2;
+}
+@media (max-width: 560px) {
+  .barra-io .ancho-2 {
+    grid-column: auto;
+  }
+}
+.acciones-io,
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: center;
+}
+.lista-io {
+  margin: 0;
+  padding-left: var(--s-5);
+  display: grid;
+  gap: var(--s-2);
+  line-height: 1.55;
+}
+.desglose {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+}
+.desglose dt {
+  color: var(--c-texto-2);
+  font-size: var(--t-sm);
+}
+.desglose dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Matrices de Markov: mapa de calor de un solo tono; el número siempre está escrito. */
+.matriz caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: var(--s-2);
+}
+.matriz th[scope="row"] {
+  white-space: nowrap;
+  color: var(--c-texto-2);
+  font-weight: 500;
+}
+.matriz td,
+.matriz th {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-sm);
+}
+.celda-calor {
+  border-radius: 4px;
+}
+.matriz-editable .entrada {
+  min-width: 72px;
+  padding: 6px 8px;
+}
+
+/* Gráfico de líneas */
+.grafico-lineas {
+  margin: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+.grafico-lineas figcaption {
+  font-weight: 600;
+}
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--t-sm);
+  color: var(--c-texto-2);
+}
+.leyenda span,
+.punto-serie {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.grafico-lienzo {
+  position: relative;
+}
+.grafico-lienzo svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: pan-y;
+}
+.rejilla-linea {
+  stroke: var(--c-borde);
+  stroke-width: 1;
+}
+.eje-texto,
+.etiqueta-directa {
+  fill: var(--c-texto-2);
+  font-size: 11px;
+  font-family: var(--f-texto);
+}
+.etiqueta-directa {
+  fill: var(--c-texto);
+}
+.cursor-linea {
+  stroke: var(--c-texto-2);
+  stroke-dasharray: 3 3;
+}
+.cursor-punto {
+  stroke: var(--c-superficie);
+  stroke-width: 2;
+}
+.tooltip-grafico {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: var(--c-superficie-2);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+  box-shadow: var(--sombra-2);
+  z-index: 2;
+}
+.tabla-datos summary {
+  cursor: pointer;
+  color: var(--c-texto-2);
+  font-size: var(--t-sm);
+}
+
+/* Seguimiento del pedido (cliente) */
+.seguimiento {
+  list-style: none;
+  margin: 0 0 var(--s-6);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-6);
+  font-size: var(--t-sm);
+}
+.seguimiento li {
+  display: flex;
+  flex-direction: column;
+}
+.seguimiento time {
+  color: var(--c-texto-2);
+  font-size: var(--t-xs);
+}
+
+/* Caja (POS): rejilla táctil de productos y ticket fijo a la derecha en pantallas anchas. */
+.pos {
+  display: grid;
+  gap: var(--s-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1024px) {
+  .pos {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
+  }
+  .pos-ticket {
+    position: sticky;
+    top: var(--s-4);
+  }
+}
+.pos-catalogo {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+.buscador.pos-buscador {
+  display: block;
+  max-width: none;
+  margin-left: 0;
+  width: 100%;
+}
+.buscador.pos-buscador input {
+  font-size: var(--t-lg);
+  height: 52px;
+}
+.pos-productos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--s-3);
+}
+.pos-producto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  text-align: left;
+  min-height: 112px;
+  padding: var(--s-3);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-md);
+  background: var(--c-superficie);
+  color: var(--c-texto);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.pos-producto:hover:not(:disabled) {
+  border-color: var(--c-primario);
+}
+.pos-producto:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.pos-producto:focus-visible {
+  outline: 2px solid var(--c-foco);
+  outline-offset: 2px;
+}
+.pos-producto:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pos-producto-nombre {
+  font-weight: 600;
+  font-size: var(--t-sm);
+  line-height: 1.3;
+}
+.pos-sku {
+  font-family: var(--f-mono);
+  font-size: var(--t-xs);
+}
+.pos-producto-pie {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+.pos-ticket {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+}
+.pos-ticket-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pos-ticket h2 {
+  font-size: var(--t-lg);
+}
+.pos-vacio {
+  font-size: var(--t-sm);
+}
+.pos-lineas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.pos-lineas li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--s-2);
+  align-items: center;
+  padding-bottom: var(--s-2);
+  border-bottom: 1px solid var(--c-borde);
+  font-size: var(--t-sm);
+}
+.pos-lineas li > div:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pos-lineas .btn-icono {
+  min-width: 44px;
+  min-height: 44px;
+}
+.pos-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--c-texto-2);
+}
+.pos-total strong {
+  font-family: var(--f-display);
+  font-size: var(--t-2xl);
+  color: var(--c-texto);
+  font-variant-numeric: tabular-nums;
+}
+.pos-cobrar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2);
+}
+.pos-cobrar .btn {
+  min-height: 56px;
+}
+.pos kbd {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  opacity: 0.75;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.pos-monto {
+  font-size: var(--t-2xl);
+  min-height: 56px;
+  font-variant-numeric: tabular-nums;
+}
+.pos-billetes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.pos-billetes .btn {
+  min-height: 44px;
+}
+.pos-cambio {
+  font-size: var(--t-xl);
+  font-weight: 700;
+  color: var(--c-exito);
+  font-variant-numeric: tabular-nums;
+}
+.pos-cambio.falta {
+  color: var(--c-error);
+}
+
+@media print {
+  .sidebar {
+    display: none !important;
+  }
+  .tema-oscuro .recibo {
+    background: #fff;
+    color: #000;
+  }
+}
+
+/* Gráfico de barras con muchos días */
+.tarjeta:has(> .grafico) {
+  min-width: 0;
+}
+.grafico {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.grafico .barra {
+  min-width: 26px;
+}
+
+/* Enlaces que son botones (abren el detalle de un producto sin cambiar de página). */
+button.enlace {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.enlace[aria-pressed="true"] {
+  font-weight: 700;
+}
