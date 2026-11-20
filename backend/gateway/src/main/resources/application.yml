@@ -1,0 +1,68 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+# Direcciones de los microservicios. En Docker Compose se usan los nombres de los contenedores.
+orvex:
+  jwt:
+    # El mismo secreto que el servicio de usuarios. En producción llega solo por variable de entorno.
+    secreto: ${JWT_SECRET:solo-desarrollo-cambiar-este-secreto-en-produccion}
+  acceso:
+    # Cada cuánto se vuelve a consultar el estado y el rol del usuario (bloqueos y cambios de rol).
+    cache: 30s
+  servicios:
+    usuarios: ${USUARIOS_URL:http://localhost:8101}
+    catalogo: ${CATALOGO_URL:http://localhost:8102}
+    compatibilidad: ${COMPATIBILIDAD_URL:http://localhost:8103}
+    optimizacion: ${OPTIMIZACION_URL:http://localhost:8104}
+    inventario: ${INVENTARIO_URL:http://localhost:8105}
+    pedidos-pagos: ${PEDIDOS_URL:http://localhost:8106}
+    notificaciones: ${NOTIFICACIONES_URL:http://localhost:8107}
+    auditoria: ${AUDITORIA_URL:http://localhost:8108}
+    reportes: ${REPORTES_URL:http://localhost:8109}
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 2000      # ms: un servicio caído no debe colgar la petición (RNF-03)
+        response-timeout: 10s
+      # Un prefijo por servicio. Los /actuator internos de los servicios NO se exponen.
+      routes:
+        - id: usuarios
+          uri: ${orvex.servicios.usuarios}
+          predicates: [ "Path=/api/auth/**,/api/usuarios/**,/api/roles/**" ]
+        - id: catalogo
+          uri: ${orvex.servicios.catalogo}
+          predicates: [ "Path=/api/productos/**,/api/categorias/**,/api/proveedores/**,/api/catalogo/**" ]
+        - id: compatibilidad
+          uri: ${orvex.servicios.compatibilidad}
+          predicates: [ "Path=/api/armador/**,/api/configuraciones/**,/api/reglas/**" ]
+        - id: optimizacion
+          uri: ${orvex.servicios.optimizacion}
+          predicates: [ "Path=/api/optimizacion/**" ]
+        - id: inventario
+          uri: ${orvex.servicios.inventario}
+          predicates: [ "Path=/api/inventario/**" ]  # las reservas son API interna: sin ruta pública
+        - id: pedidos-pagos
+          uri: ${orvex.servicios.pedidos-pagos}
+          predicates: [ "Path=/api/carrito/**,/api/pedidos/**,/api/pagos/**,/api/pos/**,/api/recibos/**" ]
+        - id: notificaciones
+          uri: ${orvex.servicios.notificaciones}
+          predicates: [ "Path=/api/notificaciones/**" ]
+        - id: auditoria
+          uri: ${orvex.servicios.auditoria}
+          predicates: [ "Path=/api/auditoria/**" ]
+        - id: reportes
+          uri: ${orvex.servicios.reportes}
+          predicates: [ "Path=/api/reportes/**" ]
+
+management:
+  metrics:
+    tags:
+      servicio: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
