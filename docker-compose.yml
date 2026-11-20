@@ -1,0 +1,232 @@
+# Un solo comando levanta todo (RNF-07):  docker compose up --build
+
+x-servicio: &servicio
+  restart: on-failure
+  environment: &entorno-servicio
+    DB_HOST: db
+    DB_PASSWORD: ${DB_PASSWORD:-orvex_dev}
+    # Eventos de negocio por la cola (notificaciones y auditoría).
+    RABBIT_HOST: rabbitmq
+    RABBIT_USUARIO: ${RABBIT_USUARIO:-orvex}
+    RABBIT_CLAVE: ${RABBIT_CLAVE:-orvex_dev}
+    EVENTOS_HABILITADOS: "true"
+  depends_on:
+    db:
+      condition: service_healthy
+  mem_limit: 448m
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fs http://localhost:$${SERVER_PORT}/actuator/health | grep -q UP"]
+    interval: 10s
+    timeout: 3s
+    retries: 12
+    start_period: 40s
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_dev}
+      DB_PASSWORD: ${DB_PASSWORD:-orvex_dev}   # lo usa el script que crea un usuario por servicio
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - orvex_mysql:/var/lib/mysql
+      - ./infra/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -h 127.0.0.1 fuerza conexión por red: el servidor temporal de init no tiene red y no pasa la prueba
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-root_dev}", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Cola de mensajes (D11): eventos de negocio hacia notificaciones y auditoría.
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USUARIO:-orvex}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_CLAVE:-orvex_dev}
+    ports:
+      - "${RABBIT_CONSOLA_PORT:-15672}:15672"
+    volumes:
+      - orvex_rabbit:/var/lib/rabbitmq
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # Buzón de correo de PRUEBA: captura los correos (bienvenida, recuperación) sin enviarlos a nadie.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "${MAIL_PORT:-8025}:8025"
+
+  gateway:
+    build: { context: ./backend, args: { MODULO: gateway } }
+    image: orvex/gateway
+    restart: on-failure
+    mem_limit: 384m
+    environment:
+      SERVER_PORT: 8080
+      # Actuator (salud y métricas) en un puerto interno que no se publica
+      MANAGEMENT_SERVER_PORT: 8090
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (copia .env.example)}
+      # Orígenes web permitidos: el local y, si hay túnel o dominio público, WEB_URL_PUBLICA.
+      CORS_ORIGINS: http://localhost:${WEB_PORT:-3000}${WEB_URL_PUBLICA:+,${WEB_URL_PUBLICA}}
+      USUARIOS_URL: http://usuarios:8101
+      CATALOGO_URL: http://catalogo:8102
+      COMPATIBILIDAD_URL: http://compatibilidad:8103
+      OPTIMIZACION_URL: http://optimizacion:8104
+      INVENTARIO_URL: http://inventario:8105
+      PEDIDOS_URL: http://pedidos-pagos:8106
+      NOTIFICACIONES_URL: http://notificaciones:8107
+      AUDITORIA_URL: http://auditoria:8108
+      REPORTES_URL: http://reportes:8109
+    # El gateway arranca aunque algún servicio esté caído: responde 503 solo en esa ruta (RNF-03).
+    depends_on: [usuarios, catalogo, compatibilidad, optimizacion, inventario, pedidos-pagos, notificaciones, auditoria, reportes]
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8090/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  usuarios:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/usuarios } }
+    image: orvex/usuarios
+    environment:
+      <<: *entorno-servicio
+      SERVER_PORT: 8101
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (copia .env.example)}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      # Base de los enlaces de los correos. Con un túnel o dominio público, define WEB_URL_PUBLICA en .env.
+      WEB_URL: ${WEB_URL_PUBLICA:-http://localhost:${WEB_PORT:-3000}}
+      # Cuentas de demostración *@orvex.demo (una por rol). Ponlo en false fuera de desarrollo.
+      ORVEX_DEMO: ${ORVEX_DEMO:-true}
+      ORVEX_DEMO_CONTRASENA: ${ORVEX_DEMO_CONTRASENA:-Orvex2026!}
+
+  catalogo:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/catalogo } }
+    image: orvex/catalogo
+    environment:
+      <<: *entorno-servicio
+      SERVER_PORT: 8102
+      INVENTARIO_URL: http://inventario:8105
+      FOTOS_DIR: /data/fotos
+    volumes:
+      - orvex_fotos:/data/fotos
+
+  compatibilidad:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/compatibilidad } }
+    image: orvex/compatibilidad
+    environment: { <<: *entorno-servicio, SERVER_PORT: 8103, CATALOGO_URL: "http://catalogo:8102" }
+
+  optimizacion:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/optimizacion } }
+    image: orvex/optimizacion
+    environment: { <<: *entorno-servicio, SERVER_PORT: 8104, CATALOGO_URL: "http://catalogo:8102", COMPATIBILIDAD_URL: "http://compatibilidad:8103" }
+
+  inventario:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/inventario } }
+    image: orvex/inventario
+    environment: { <<: *entorno-servicio, SERVER_PORT: 8105, CATALOGO_URL: "http://catalogo:8102" }
+
+  pedidos-pagos:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/pedidos-pagos } }
+    image: orvex/pedidos-pagos
+    environment:
+      <<: *entorno-servicio
+      SERVER_PORT: 8106
+      CATALOGO_URL: http://catalogo:8102
+      COMPATIBILIDAD_URL: http://compatibilidad:8103
+      INVENTARIO_URL: http://inventario:8105
+      USUARIOS_URL: http://usuarios:8101
+      # Banco QR de pruebas (no mueve dinero). Con un banco real: QR_SANDBOX=false y su secreto en .env.
+      QR_SANDBOX: ${QR_SANDBOX:-true}
+      QR_WEBHOOK_SECRETO: ${QR_WEBHOOK_SECRETO:-solo-para-desarrollo-cambiar}
+      QR_WEBHOOK_URL: http://pedidos-pagos:8106/api/pagos/webhook
+
+  notificaciones:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/notificaciones } }
+    image: orvex/notificaciones
+    environment:
+      <<: *entorno-servicio
+      SERVER_PORT: 8107
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      USUARIOS_URL: http://usuarios:8101
+
+  auditoria:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/auditoria } }
+    image: orvex/auditoria
+    environment: { <<: *entorno-servicio, SERVER_PORT: 8108 }
+
+  reportes:
+    <<: *servicio
+    build: { context: ./backend, args: { MODULO: servicios/reportes } }
+    image: orvex/reportes
+    environment:
+      <<: *entorno-servicio
+      SERVER_PORT: 8109
+      PEDIDOS_URL: http://pedidos-pagos:8106
+      INVENTARIO_URL: http://inventario:8105
+      CATALOGO_URL: http://catalogo:8102
+
+  # Monitoreo (M08, HU-25): solo con el perfil "monitoreo" para ahorrar memoria en equipos chicos.
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["monitoreo"]
+    volumes:
+      - ./infra/prometheus:/etc/prometheus:ro
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    mem_limit: 256m
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    profiles: ["monitoreo"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USUARIO:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_CLAVE:-orvex_dev}
+      GF_USERS_DEFAULT_LANGUAGE: es-ES
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on: [prometheus]
+    mem_limit: 256m
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Muestra en "Ingresar" la lista de cuentas de demostración (igual que ORVEX_DEMO).
+        NEXT_PUBLIC_MOSTRAR_DEMO: ${ORVEX_DEMO:-true}
+    image: orvex/web
+    environment:
+      # La web reenvía /api al gateway por la red interna; nunca llega a los microservicios.
+      API_INTERNA_URL: http://gateway:8080
+    depends_on:
+      - gateway
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  orvex_rabbit:
+  # Fotos de productos subidas desde el panel de administración.
+  orvex_fotos:
+  # Volumen nuevo (antes "orvex_db"): el esquema por servicio necesita una base inicializada desde cero.
+  orvex_mysql:

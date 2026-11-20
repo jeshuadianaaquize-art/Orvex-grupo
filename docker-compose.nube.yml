@@ -1,0 +1,58 @@
+# Publicación con link permanente (docs/publicar.md)
+
+x-base-nube: &base-nube
+  depends_on: !override
+    preparar-db:
+      condition: service_completed_successfully
+  environment:
+    DB_HOST: ${DB_EXTERNO_HOST:?Define DB_EXTERNO_HOST en .env (host de Aiven)}
+    DB_PUERTO: ${DB_EXTERNO_PUERTO:?Define DB_EXTERNO_PUERTO en .env}
+    DB_USER: ${DB_EXTERNO_USUARIO:?Define DB_EXTERNO_USUARIO en .env}
+    DB_PASSWORD: ${DB_EXTERNO_CLAVE:?Define DB_EXTERNO_CLAVE en .env}
+    # Aiven exige conexión cifrada
+    SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: 3
+    SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: 1
+
+services:
+  # Una sola vez por arranque
+  preparar-db:
+    image: mysql:8.0
+    restart: "no"
+    environment:
+      MYSQL_PWD: ${DB_EXTERNO_CLAVE}
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        for e in usuarios catalogo compatibilidad optimizacion inventario pedidos notificaciones auditoria reportes; do
+        mysql --ssl-mode=REQUIRED -h "$DB_EXTERNO_HOST" -P "$DB_EXTERNO_PUERTO" -u "$DB_EXTERNO_USUARIO"
+        -e "CREATE DATABASE IF NOT EXISTS orvex_$$e CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" || exit 1;
+        done; echo "Esquemas listos en Aiven"
+    env_file: [.env]
+
+  db:
+    profiles: ["solo-local"]
+  web:
+    profiles: ["solo-local"]
+
+  usuarios: *base-nube
+  catalogo: *base-nube
+  compatibilidad: *base-nube
+  optimizacion: *base-nube
+  inventario: *base-nube
+  pedidos-pagos: *base-nube
+  notificaciones: *base-nube
+  auditoria: *base-nube
+  reportes: *base-nube
+
+  gateway:
+    environment:
+      CORS_ORIGINS: ${WEB_URL_PUBLICA:?Define WEB_URL_PUBLICA en .env (la URL de Vercel)}
+
+  # Publica el gateway en el dominio fijo y gratuito de tu cuenta de ngrok.
+  ngrok:
+    image: ngrok/ngrok:3
+    restart: unless-stopped
+    command: ["http", "--url=${NGROK_DOMINIO:?Define NGROK_DOMINIO en .env}", "gateway:8080"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?Define NGROK_AUTHTOKEN en .env}
+    depends_on: [gateway]
