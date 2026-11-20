@@ -1,0 +1,3 @@
+# Los scripts que corren dentro de Linux deben conservar finales de línea LF.
+*.sh text eol=lf
+Jenkinsfile text eol=lf

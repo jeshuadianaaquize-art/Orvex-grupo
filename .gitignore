@@ -1,0 +1,25 @@
+# Secretos
+.env
+
+# Java / Maven
+target/
+*.class
+*.log
+
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+out/
+
+# IDEs y SO
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Fotos subidas en desarrollo local (en Docker van a un volumen)
+datos/
+
+# Log del túnel público de prueba (cloudflared)
+tunel-orvex.log
