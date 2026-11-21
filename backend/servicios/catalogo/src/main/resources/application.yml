@@ -1,0 +1,45 @@
+server:
+  port: ${SERVER_PORT:8102}
+
+spring:
+  application:
+    name: catalogo
+  datasource:
+    # Cada servicio tiene su propio esquema y usuario de BD (arquitectura del informe, punto 5.3.1.12).
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PUERTO:3306}/orvex_catalogo?useUnicode=true&characterEncoding=utf8
+    username: ${DB_USER:orvex_catalogo}
+    password: ${DB_PASSWORD:orvex_dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none        # el esquema lo controla Flyway, no Hibernate
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
+
+management:
+  metrics:
+    tags:
+      servicio: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+info:
+  servicio: catalogo
+  descripcion: "Catálogo: productos, categorías, especificaciones técnicas y proveedores (M03)."
+
+orvex:
+  servicios:
+    inventario-url: ${INVENTARIO_URL:http://localhost:8105}
+  fotos:
+    # En Docker es un volumen: las fotos sobreviven a reinicios y recompilaciones.
+    directorio: ${FOTOS_DIR:./datos/fotos}

@@ -1,0 +1,58 @@
+server:
+  port: ${SERVER_PORT:8104}
+
+spring:
+  application:
+    name: optimizacion
+  datasource:
+    # Cada servicio tiene su propio esquema y usuario de BD (arquitectura del informe, punto 5.3.1.12).
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PUERTO:3306}/orvex_optimizacion?useUnicode=true&characterEncoding=utf8
+    username: ${DB_USER:orvex_optimizacion}
+    password: ${DB_PASSWORD:orvex_dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none        # el esquema lo controla Flyway, no Hibernate
+  flyway:
+    enabled: true
+
+management:
+  metrics:
+    tags:
+      servicio: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+info:
+  servicio: optimizacion
+  descripcion: "Optimización: puntaje, cuellos de botella y alternativas (M05)."
+
+orvex:
+  servicios:
+    catalogo-url: ${CATALOGO_URL:http://localhost:8102}
+    compatibilidad-url: ${COMPATIBILIDAD_URL:http://localhost:8103}
+  # Umbrales PROPUESTOS para revision del equipo (el informe no los fija). Detalle en docs/optimizacion.md.
+  optimizacion:
+    umbral-alternativas: 70
+    alternativas-por-categoria: 3
+    puntaje-maximo-incompatible: 40
+    penalizaciones:
+      incompatible: 25
+      advertencia: 5
+      maximo-compatibilidad: 50
+      balance: 30
+      nucleos: 10
+      ram: 20
+      doble-canal: 8
+      sin-ssd: 8
+      gasto: 10
+    usos:
+      juegos:  { balance-minimo: 0.9, balance-maximo: 1.6, ram-minima-gb: 16, nucleos-minimos: 6, sin-grafica: 30, grafica-maxima-util: 0 }
+      edicion: { balance-minimo: 0.7, balance-maximo: 1.3, ram-minima-gb: 32, nucleos-minimos: 8, sin-grafica: 15, grafica-maxima-util: 0 }
+      oficina: { balance-minimo: 0, balance-maximo: 0, ram-minima-gb: 8, nucleos-minimos: 4, sin-grafica: 0, grafica-maxima-util: 40 }
